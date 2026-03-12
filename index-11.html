@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lillian Gottschalk — GTM & Automation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.3/p5.min.js"></script>
+  <style>
+    :root {
+      --bg:      #0d1535;
+      --surface: #131d42;
+      --border:  rgba(180,200,255,0.1);
+      --text:    #eae8f2;
+      --muted:   #7a85b0;
+      --navy:    #0d1535;
+      --accent:  #e8a0c8;
+      --accent2: #b8a0e8;
+      --gold:    #f0c14b;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; cursor: none; }
+    body.splash-active { overflow: hidden; }
+
+    /* CURSOR */
+    #cursor {
+      position: fixed; top: 0; left: 0; z-index: 9998;
+      width: 10px; height: 10px;
+      background: var(--accent);
+      pointer-events: none;
+      transform: translate(-50%,-50%);
+      transition: width 0.2s, height 0.2s, opacity 0.2s;
+      clip-path: polygon(0 0, calc(100% - 3px) 0, 100% 3px, 100% 100%, 3px 100%, 0 calc(100% - 3px));
+    }
+    #cursor.grow { width: 36px; height: 36px; opacity: 0.5; }
+
+    /* SPLASH */
+    #splash {
+      position: fixed; inset: 0; z-index: 10000;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      cursor: none;
+      transition: opacity 0.9s ease;
+    }
+    #splash.exit { opacity: 0; pointer-events: none; }
+    #splash-canvas-wrap { position: fixed; inset: 0; }
+    #splash-hint {
+      position: absolute; bottom: 2.5rem; left: 50%; transform: translateX(-50%);
+      font-family: 'Syne', sans-serif; font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted);
+      opacity: 0; animation: fadeIn 1s 2s forwards; white-space: nowrap;
+    }
+    #splash-hint::after {
+      content: ''; display: block; margin: 0.5rem auto 0;
+      width: 1px; height: 28px;
+      background: linear-gradient(to bottom, var(--muted), transparent);
+    }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.1rem 2.5rem;
+      backdrop-filter: blur(20px);
+      background: rgba(13,21,53,0.75);
+      border-bottom: 1px solid transparent;
+      background-clip: padding-box;
+    }
+    nav::after {
+      content: '';
+      position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent 0%, rgba(232,160,200,0.4) 30%, rgba(184,160,232,0.6) 50%, rgba(232,160,200,0.4) 70%, transparent 100%);
+    }
+    .nav-logo {
+      font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.15rem;
+      letter-spacing: -0.02em; color: transparent;
+      -webkit-text-stroke: 1.5px var(--accent); text-decoration: none;
+      position: relative; transition: filter 0.3s;
+    }
+    .nav-logo:hover { filter: drop-shadow(0 0 8px rgba(232,160,200,0.6)); }
+    .nav-logo span { color: var(--accent); -webkit-text-stroke: 0; }
+    .nav-links { display: flex; gap: 0.3rem; list-style: none; }
+    .nav-links a {
+      font-size: 0.75rem; font-weight: 700; color: var(--muted);
+      text-decoration: none; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.4rem 0.9rem; position: relative; transition: color 0.25s;
+      clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px));
+    }
+    .nav-links a::before {
+      content: ''; position: absolute; inset: 0;
+      background: rgba(232,160,200,0.07);
+      opacity: 0; transition: opacity 0.25s;
+      clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px));
+    }
+    .nav-links a:hover { color: var(--accent); }
+    .nav-links a:hover::before { opacity: 1; }
+    .nav-cta {
+      font-family: 'Syne', sans-serif; font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: #0d1535; background: var(--accent);
+      padding: 0.4rem 1.1rem; text-decoration: none; transition: filter 0.2s, transform 0.2s;
+      clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+    }
+    .nav-cta:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+    /* HERO */
+    #hero {
+      min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr;
+      padding-top: 80px; position: relative; overflow: hidden;
+      background: radial-gradient(ellipse at 20% 50%, rgba(184,160,232,0.07) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 20%, rgba(232,160,200,0.06) 0%, transparent 50%);
+    }
+    .hero-left {
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 6rem 3rem 6rem 5vw; position: relative; z-index: 2;
+    }
+    .hero-tag {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--accent);
+      border: 1px solid rgba(232,160,200,0.3);
+      padding: 0.3rem 0.9rem; margin-bottom: 1.5rem;
+      clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+      opacity: 0; animation: fadeUp 0.7s 0.1s forwards;
+    }
+    #name-canvas-wrap { margin: 0.5rem 0 0.2rem; opacity: 0; animation: fadeIn 0.8s 0.3s forwards; }
+    .hero-sub {
+      margin-top: 1.2rem; font-size: 1rem; font-weight: 300; line-height: 1.7;
+      color: var(--muted); max-width: 400px;
+      opacity: 0; animation: fadeUp 0.7s 0.5s forwards;
+    }
+    .hero-cta {
+      margin-top: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;
+      opacity: 0; animation: fadeUp 0.7s 0.65s forwards;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.75rem 1.8rem; font-family: 'Syne', sans-serif;
+      font-size: 0.85rem; font-weight: 700; text-decoration: none;
+      transition: transform 0.2s; letter-spacing: 0.03em;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    }
+    .btn:hover { transform: translateY(-2px) skewX(-2deg); }
+    .btn-primary { background: var(--accent); color: #0d1535; }
+    .btn-ghost { border: 1px solid var(--border); color: var(--text); background: transparent; }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+    .hero-right {
+      position: relative; display: flex; align-items: center; justify-content: center;
+      opacity: 0; animation: fadeIn 1s 0.7s forwards;
+    }
+    #p5-canvas-wrap { position: absolute; inset: 0; }
+    .hero-graphic { position: relative; width: 380px; height: 380px; z-index: 2; pointer-events: none; }
+    .ring {
+      position: absolute; border-radius: 50%;
+      border: 1px solid rgba(232,160,200,0.15);
+      animation: spin linear infinite;
+    }
+    .ring-1 { inset: 0; animation-duration: 22s; }
+    .ring-2 { inset: 45px; animation-duration: 32s; animation-direction: reverse; }
+    .ring-3 { inset: 90px; animation-duration: 27s; }
+    .ring::after {
+      content: ''; position: absolute; top: -4px; left: 50%;
+      width: 7px; height: 7px; background: var(--accent); border-radius: 50%;
+      transform: translateX(-50%);
+    }
+    .ring-2::after { background: var(--accent2); }
+    .hero-center {
+      position: absolute; inset: 130px; border-radius: 50%;
+      border: 1px solid var(--border); background: var(--surface);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem;
+    }
+    .hero-center span { font-family: 'Syne', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+    .hero-center strong { font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 800; color: var(--accent); }
+    .floating-pill {
+      position: absolute; background: var(--surface); border: 1px solid var(--border);
+      padding: 0.4rem 0.9rem; font-size: 0.72rem; font-weight: 600; white-space: nowrap;
+      animation: float 4s ease-in-out infinite;
+      clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px));
+    }
+    .pill-1 { top: 55px; right: -10px; animation-delay: 0s; }
+    .pill-2 { bottom: 75px; left: -25px; animation-delay: 1.5s; }
+    .pill-3 { top: 50%; right: -45px; animation-delay: 0.8s; }
+
+    /* TICKER */
+    .ticker-wrap {
+      overflow: hidden; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      padding: 0.85rem 0; background: rgba(232,160,200,0.03);
+    }
+    .ticker { display: flex; gap: 3rem; animation: ticker 22s linear infinite; width: max-content; }
+    .ticker-item {
+      font-family: 'Syne', sans-serif; font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); white-space: nowrap;
+    }
+    .ticker-item span { color: var(--accent); margin-right: 3rem; }
+
+    /* SECTIONS */
+    section { padding: 7rem 5vw; max-width: 1100px; margin: 0 auto; }
+    .section-label {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 0.8rem;
+    }
+    .section-title {
+      font-family: 'Syne', sans-serif; font-size: clamp(2rem, 4vw, 3.2rem);
+      font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; margin-bottom: 1.5rem;
+    }
+
+    /* ABOUT */
+    #about { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: start; }
+    .about-text p { font-size: 1rem; line-height: 1.8; color: var(--muted); margin-bottom: 1rem; }
+    .about-text p strong { color: var(--text); font-weight: 500; }
+    .about-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 2rem; }
+    .stat {
+      padding: 1.2rem; background: var(--surface); border: 1px solid var(--border);
+      transition: border-color 0.2s, transform 0.2s;
+      clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+    }
+    .stat:hover { border-color: var(--accent); transform: translateY(-3px); }
+    .stat-num { font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800; color: var(--accent); letter-spacing: -0.04em; }
+    .stat-label { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+
+    /* SKILLS PANEL */
+    #skills-p5-wrap {
+      position: relative; overflow: hidden;
+      border: 1px solid var(--border); background: var(--surface);
+      clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+    }
+    .skills-inner { position: relative; z-index: 1; padding: 2rem; display: flex; flex-direction: column; gap: 1.8rem; }
+
+    .skill-category {}
+    .skill-cat-label {
+      font-family: 'Syne', sans-serif; font-size: 0.65rem; font-weight: 700;
+      letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent);
+      margin-bottom: 0.9rem; display: flex; align-items: center; gap: 0.6rem;
+    }
+    .skill-cat-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    .skill-bar-list { display: flex; flex-direction: column; gap: 0.6rem; }
+    .skill-bar-item {
+      display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: 0.8rem;
+    }
+    .skill-bar-item span { font-size: 0.82rem; font-weight: 500; color: var(--text); }
+    .skill-bar {
+      height: 4px; background: rgba(255,255,255,0.06); 
+      clip-path: polygon(0 0, calc(100% - 3px) 0, 100% 3px, 100% 100%, 3px 100%, 0 calc(100% - 3px));
+      overflow: hidden;
+    }
+    .skill-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transform: scaleX(0); transform-origin: left;
+      transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .reveal.visible .skill-bar-fill { transform: scaleX(1); }
+
+    .lang-flags { display: flex; flex-direction: column; gap: 0.55rem; }
+    .lang-item {
+      display: flex; align-items: center; gap: 0.7rem;
+      padding: 0.5rem 0.8rem;
+      background: rgba(232,160,200,0.04); border: 1px solid rgba(232,160,200,0.1);
+      clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px));
+    }
+    .lang-flag { font-size: 1rem; }
+    .lang-name { font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 700; flex: 1; }
+    .lang-level { font-size: 0.7rem; color: var(--accent); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+
+    /* PROJECTS */
+    .projects-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.2rem; }
+    .project-card {
+      background: var(--surface); border: 1px solid var(--border); overflow: hidden;
+      transition: transform 0.3s, border-color 0.3s;
+      clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+    }
+    .project-card:hover { transform: translateY(-6px); border-color: var(--accent); }
+    .thumb-placeholder {
+      width: 100%; min-height: 160px; display: flex; align-items: center; justify-content: center;
+      font-size: 2.5rem; background: linear-gradient(135deg, rgba(232,160,200,0.08), rgba(184,160,232,0.06));
+    }
+    .project-body { padding: 1.3rem; }
+    .project-number { font-family: 'Syne', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; color: var(--accent); text-transform: uppercase; margin-bottom: 0.4rem; }
+    .project-title { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 0.4rem; }
+    .project-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.6; }
+    .project-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.8rem; }
+    .tag {
+      font-size: 0.68rem; font-weight: 700; padding: 0.18rem 0.55rem;
+      background: rgba(232,160,200,0.1); color: var(--accent); letter-spacing: 0.05em;
+    }
+
+    /* CV */
+    .cv-tabs { display: flex; gap: 0; margin-bottom: 2.5rem; border-bottom: 1px solid var(--border); }
+    .cv-tab {
+      font-family: 'Syne', sans-serif; font-size: 0.78rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+      padding: 0.7rem 1.5rem; border: none; background: none; cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s;
+    }
+    .cv-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .cv-panel { display: none; }
+    .cv-panel.active { display: block; }
+    .tl-item { display: flex; gap: 1.5rem; margin-bottom: 2rem; }
+    .tl-dot { flex-shrink: 0; width: 10px; height: 10px; background: var(--accent); margin-top: 6px; clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
+    .tl-line { flex-shrink: 0; width: 1px; background: var(--border); margin: 16px 4.5px 0; }
+    .tl-date { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.3rem; }
+    .tl-role { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 0.2rem; }
+    .tl-org { font-size: 0.82rem; color: var(--muted); margin-bottom: 0.5rem; }
+    .tl-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+    .tl-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .hidden { display: none !important; }
+
+    /* CONTACT */
+    #contact { max-width: 1100px; margin: 0 auto; padding: 7rem 5vw; }
+    .contact-inner {
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 4rem; position: relative; text-align: center;
+      clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+    }
+    .contact-inner::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent);
+    }
+    .contact-sub { color: var(--muted); font-size: 0.95rem; margin-bottom: 2.5rem; }
+    .contact-form { display: grid; gap: 1rem; max-width: 520px; margin: 0 auto; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-field { display: flex; flex-direction: column; gap: 0.35rem; text-align: left; }
+    .form-field label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+    .form-field input, .form-field textarea {
+      background: var(--bg); border: 1px solid var(--border); padding: 0.75rem 1rem;
+      color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+      transition: border-color 0.2s; outline: none; resize: none;
+      clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+    }
+    .form-field input:focus, .form-field textarea:focus { border-color: var(--accent); }
+    .contact-form .btn { width: 100%; justify-content: center; }
+    .social-links { display: flex; gap: 0.8rem; justify-content: center; margin-top: 1.8rem; flex-wrap: wrap; }
+    .social-link {
+      display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; font-weight: 600;
+      color: var(--muted); text-decoration: none; padding: 0.45rem 1rem;
+      border: 1px solid var(--border); transition: all 0.2s;
+      clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px));
+    }
+    .social-link:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* FOOTER */
+    footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--muted); }
+
+    /* ANIMATIONS */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+    @keyframes fadeIn  { from { opacity: 0; } to   { opacity: 1; } }
+    @keyframes spin    { to { transform: rotate(360deg); } }
+    @keyframes float   { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    @keyframes ticker  { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    @media (max-width: 900px) {
+      #hero { grid-template-columns: 1fr; }
+      .hero-right { display: none; }
+      #about { grid-template-columns: 1fr; gap: 3rem; }
+      .projects-grid { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+      nav { padding: 1rem 1.5rem; }
+      .hero-left { padding: 4rem 1.5rem; }
+      section { padding: 5rem 1.5rem; }
+      .contact-inner { padding: 2.5rem 1.5rem; }
+    }
+
+    /* LANG SWITCHER */
+    .lang-switcher {
+      display: flex; align-items: center; gap: 0;
+      border: 1px solid var(--border);
+      clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px));
+      overflow: hidden;
+    }
+    .lang-btn {
+      font-family: 'Syne', sans-serif; font-size: 0.68rem; font-weight: 700;
+      letter-spacing: 0.06em; color: var(--muted); background: transparent;
+      border: none; padding: 0.38rem 0.65rem; cursor: pointer;
+      transition: all 0.2s; border-right: 1px solid var(--border);
+    }
+    .lang-btn:last-child { border-right: none; }
+    .lang-btn:hover { color: var(--accent); background: rgba(232,160,200,0.07); }
+    .lang-btn.active { color: #0d1535; background: var(--accent); }
+  </style>
+</head>
+<body class="splash-active">
+
+<!-- SPLASH -->
+<div id="splash">
+  <div id="splash-canvas-wrap"></div>
+  <div id="splash-hint" data-i18n="splash.hint">Click anywhere to enter</div>
+</div>
+
+<!-- CURSOR -->
+<div id="cursor"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">LG<span>.</span></a>
+  <ul class="nav-links">
+    <li><a href="#about" data-i18n="nav.about">About</a></li>
+    <li><a href="#projects" data-i18n="nav.projects">Projects</a></li>
+    <li><a href="#cv" data-i18n="nav.cv">CV</a></li>
+  </ul>
+  <div class="lang-switcher">
+    <button class="lang-btn active" onclick="setLang('en')">EN</button>
+    <button class="lang-btn" onclick="setLang('de')">DE</button>
+    <button class="lang-btn" onclick="setLang('zh')">中文</button>
+  </div>
+  <a href="#contact" class="nav-cta" data-i18n="nav.cta">Say Hello ✦</a>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-left">
+    <div class="hero-tag" data-i18n="hero.tag" data-i18n="cv.role.gtm">GTM &amp; Automation Manager</div>
+    <div id="name-canvas-wrap"></div>
+    <p class="hero-sub" data-i18n="hero.sub">Connecting humans, cultures and machines — bridging go-to-market strategy with hands-on process automation.</p>
+    <div class="hero-cta">
+      <a href="#projects" class="btn btn-primary" data-i18n="hero.cta1">View Projects →</a>
+      <a href="#contact" class="btn btn-ghost" data-i18n="hero.cta2">Get in Touch</a>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div id="p5-canvas-wrap"></div>
+    <div class="hero-graphic">
+      <div class="ring ring-1"></div>
+      <div class="ring ring-2"></div>
+      <div class="ring ring-3"></div>
+      <div class="hero-center">
+        <span data-i18n="hero.based">Based in</span>
+        <strong>DE</strong>
+        <span>VAARHAFT</span>
+      </div>
+      <div class="floating-pill pill-1" data-i18n="hero.pill1">🤖 Automation</div>
+      <div class="floating-pill pill-2" data-i18n="hero.pill2">🌏 3 Languages</div>
+      <div class="floating-pill pill-3" data-i18n="hero.pill3">⚡ GTM</div>
+    </div>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker-wrap">
+  <div class="ticker">
+    <span class="ticker-item" data-i18n="ticker.gtm">GTM Strategy <span>✦</span></span>
+    <span class="ticker-item" data-i18n="ticker.wf">Workflow Automation <span>✦</span></span>
+    <span class="ticker-item">n8n &amp; Python <span>✦</span></span>
+    <span class="ticker-item" data-i18n="ticker.lead">Lead Generation <span>✦</span></span>
+    <span class="ticker-item">SEO <span>✦</span></span>
+    <span class="ticker-item">Lemlist <span>✦</span></span>
+    <span class="ticker-item" data-i18n="ticker.langs">Mandarin · English · German <span>✦</span></span>
+    <span class="ticker-item">42 Prague <span>✦</span></span>
+    <span class="ticker-item" data-i18n="ticker.gtm">GTM Strategy <span>✦</span></span>
+    <span class="ticker-item" data-i18n="ticker.wf">Workflow Automation <span>✦</span></span>
+    <span class="ticker-item">n8n &amp; Python <span>✦</span></span>
+    <span class="ticker-item" data-i18n="ticker.lead">Lead Generation <span>✦</span></span>
+    <span class="ticker-item">SEO <span>✦</span></span>
+    <span class="ticker-item">Lemlist <span>✦</span></span>
+    <span class="ticker-item" data-i18n="ticker.langs">Mandarin · English · German <span>✦</span></span>
+    <span class="ticker-item">42 Prague <span>✦</span></span>
+  </div>
+</div>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="about-text reveal">
+    <div class="section-label" data-i18n="about.label">About Me</div>
+    <h2 class="section-title" data-i18n="about.title">Humans.<br>Cultures.<br>Machines.</h2>
+    <p><span data-i18n="about.p1">I'm <strong>Lillian Gottschalk</strong>, GTM &amp; Automation Manager at <strong>VAARHAFT GmbH</strong> — bridging strategic go-to-market thinking with hands-on process automation.</span></p>
+    <p><span data-i18n="about.p2">Whether building intelligent workflows with <strong>n8n</strong>, engineering outreach pipelines with <strong>Lemlist</strong>, or scripting in <strong>Python</strong> — I thrive at the intersection of people, technology and cross-cultural communication.</span></p>
+    <p><span data-i18n="about.p3">Currently deepening my software foundations at <strong>42 Prague</strong> while working full-time in Berlin.</span></p>
+    <div class="about-stats">
+      <div class="stat"><div class="stat-num">1.2</div><div class="stat-label" data-i18n="about.stat1">B.A. Grade (Asian Studies)</div></div>
+      <div class="stat"><div class="stat-num">3</div><div class="stat-label" data-i18n="about.stat2">Languages spoken</div></div>
+      <div class="stat"><div class="stat-num">42</div><div class="stat-label" data-i18n="about.stat3">Prague — coding school</div></div>
+      <div class="stat"><div class="stat-num">🌏</div><div class="stat-label">CN · TW · CZ · DE</div></div>
+    </div>
+  </div>
+  <div class="reveal" id="skills-p5-wrap">
+    <div class="skills-inner">
+
+      <div class="skill-category">
+        <div class="skill-cat-label" data-i18n="skills.cat1">Automation &amp; Code</div>
+        <div class="skill-bar-list">
+          <div class="skill-bar-item"><span>n8n</span><div class="skill-bar"><div class="skill-bar-fill" style="width:92%"></div></div></div>
+          <div class="skill-bar-item"><span>Python</span><div class="skill-bar"><div class="skill-bar-fill" style="width:75%"></div></div></div>
+          <div class="skill-bar-item"><span>C</span><div class="skill-bar"><div class="skill-bar-fill" style="width:55%"></div></div></div>
+        </div>
+      </div>
+
+      <div class="skill-category">
+        <div class="skill-cat-label" data-i18n="skills.cat2">GTM &amp; Growth</div>
+        <div class="skill-bar-list">
+          <div class="skill-bar-item"><span>GTM Strategy</span><div class="skill-bar"><div class="skill-bar-fill" style="width:90%"></div></div></div>
+          <div class="skill-bar-item"><span>Lemlist</span><div class="skill-bar"><div class="skill-bar-fill" style="width:88%"></div></div></div>
+          <div class="skill-bar-item"><span>SEO</span><div class="skill-bar"><div class="skill-bar-fill" style="width:70%"></div></div></div>
+          <div class="skill-bar-item"><span>Lead Generation</span><div class="skill-bar"><div class="skill-bar-fill" style="width:85%"></div></div></div>
+        </div>
+      </div>
+
+      <div class="skill-category">
+        <div class="skill-cat-label" data-i18n="skills.cat3">Languages</div>
+        <div class="lang-flags">
+          <div class="lang-item"><span class="lang-flag">🇩🇪</span><span class="lang-name" data-i18n="lang.de">German</span><span class="lang-level" data-i18n="skills.native">Native</span></div>
+          <div class="lang-item"><span class="lang-flag">🇬🇧</span><span class="lang-name" data-i18n="lang.en">English</span><span class="lang-level" data-i18n="skills.fluent">Fluent</span></div>
+          <div class="lang-item"><span class="lang-flag">🇨🇳</span><span class="lang-name" data-i18n="lang.zh">Mandarin</span><span class="lang-level" data-i18n="skills.fluent">Fluent</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- PROJECTS -->
+<section id="projects" style="max-width:1100px;margin:0 auto;">
+  <div class="reveal" style="margin-bottom:2.5rem;">
+    <div class="section-label" data-i18n="projects.label">Work</div>
+    <h2 class="section-title" data-i18n="projects.title">Selected Projects</h2>
+  </div>
+  <div class="projects-grid">
+    <div class="project-card reveal">
+      <div class="thumb-placeholder">⚡</div>
+      <div class="project-body">
+        <div class="project-number">01</div>
+        <h3 class="project-title" data-i18n="projects.p1title">Project One</h3>
+        <p class="project-desc" data-i18n="projects.p1desc">Coming soon — placeholder for your first featured project.</p>
+        <div class="project-tags"><span class="tag">Automation</span><span class="tag">n8n</span></div>
+      </div>
+    </div>
+    <div class="project-card reveal">
+      <div class="thumb-placeholder">🌐</div>
+      <div class="project-body">
+        <div class="project-number">02</div>
+        <h3 class="project-title" data-i18n="projects.p2title">Project Two</h3>
+        <p class="project-desc" data-i18n="projects.p2desc">Coming soon — placeholder for your second featured project.</p>
+        <div class="project-tags"><span class="tag">GTM</span><span class="tag">SEO</span></div>
+      </div>
+    </div>
+    <div class="project-card reveal">
+      <div class="thumb-placeholder">🤝</div>
+      <div class="project-body">
+        <div class="project-number">03</div>
+        <h3 class="project-title" data-i18n="projects.p3title">Project Three</h3>
+        <p class="project-desc" data-i18n="projects.p3desc">Coming soon — placeholder for your third featured project.</p>
+        <div class="project-tags"><span class="tag">Lemlist</span><span class="tag">Python</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CV -->
+<section id="cv" style="max-width:1100px;margin:0 auto;">
+  <div class="reveal" style="margin-bottom:2rem;">
+    <div class="section-label" data-i18n="cv.label">Resume</div>
+    <h2 class="section-title" data-i18n="cv.title">Experience &amp; Background</h2>
+  </div>
+  <div class="cv-tabs">
+    <button class="cv-tab active" onclick="switchTab('exp',this)" data-i18n="cv.tab1">Experience</button>
+    <button class="cv-tab" onclick="switchTab('edu',this)" data-i18n="cv.tab2">Education</button>
+    <button class="cv-tab" onclick="switchTab('int',this)" data-i18n="cv.tab3">International</button>
+  </div>
+
+  <div id="tab-exp" class="cv-panel active">
+    <div class="tl-item reveal">
+      <div><div class="tl-dot"></div></div>
+      <div>
+        <div class="tl-date" data-i18n="cv.present" data-i18n-append="04/2026 – " data-i18n-append="04/2026 – " data-i18n="cv.present">04/2026 – Present</div>
+        <div class="tl-role" data-i18n="cv.role.gtm">GTM &amp; Automation Manager</div>
+        <div class="tl-org">VAARHAFT GmbH · Berlin</div>
+        <div class="tl-tags"><span class="tag">GTM</span><span class="tag">Automation</span><span class="tag">n8n</span></div>
+      </div>
+    </div>
+    <div class="tl-item reveal">
+      <div><div class="tl-dot"></div></div>
+      <div>
+        <div class="tl-date">09/2024 – 03/2026</div>
+        <div class="tl-role" data-i18n="cv.role.fa">Founders Associate</div>
+        <div class="tl-org">VAARHAFT GmbH · Berlin</div>
+        <div class="tl-tags"><span class="tag">GTM</span><span class="tag">Automation</span><span class="tag">n8n</span></div>
+      </div>
+    </div>
+    <div class="tl-item reveal">
+      <div><div class="tl-dot"></div></div>
+      <div>
+        <div class="tl-date">03/2023 – 10/2023</div>
+        <div class="tl-role" data-i18n="cv.role.intern">Internship · Import / Logistics / Disposition</div>
+        <div class="tl-org">EDEKA ZENTRALE</div>
+        <div class="tl-tags"><span class="tag">Logistics</span><span class="tag">Operations</span></div>
+      </div>
+    </div>
+    <div class="tl-item reveal">
+      <div><div class="tl-dot"></div></div>
+      <div>
+        <div class="tl-date">09/2021 – 03/2022</div>
+        <div class="tl-role" data-i18n="cv.role.sa">Student Assistant</div>
+        <div class="tl-org" data-i18n="cv.org.china">China Competence Center · HTWG Konstanz</div>
+        <div class="tl-tags"><span class="tag">Research</span><span class="tag">China</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-edu" class="cv-panel hidden">
+    <div class="tl-item reveal">
+      <div><div class="tl-dot"></div></div>
+      <div>
+        <div class="tl-date" data-i18n="cv.present" data-i18n-append="2024 – ">2024 – Present</div>
+        <div class="tl-role" data-i18n="cv.role.42">Foundations of Software Development</div>
+        <div class="tl-org">42 Prague · Czech Republic</div>
+        <div class="tl-tags"><span class="tag">C</span><span class="tag">Python</span><span class="tag">Systems</span></div>
+      </div>
+    </div>
+    <div class="tl-item reveal">
+      <div><div class="tl-dot"></div></div>
+      <div>
+        <div class="tl-date">2019 – 2024</div>
+        <div class="tl-role" data-i18n="cv.role.ba">B.A. Asian Studies &amp; Management China — Grade 1.2</div>
+        <div class="tl-org">HTWG Konstanz</div>
+        <div class="tl-desc" data-i18n="cv.desc.thesis">Thesis: Disinformation &amp; digital democracy in Taiwan</div>
+        <div class="tl-tags"><span class="tag">Asian Studies</span><span class="tag">Management</span><span class="tag">1.2</span></div>
+      </div>
+    </div>
+    <div class="tl-item reveal">
+      <div><div class="tl-dot"></div></div>
+      <div>
+        <div class="tl-date">2016 – 2018</div>
+        <div class="tl-role" data-i18n="cv.role.hs">High School Diploma (Abitur)</div>
+        <div class="tl-org" data-i18n="cv.org.dante">Dante Gymnasium · Munich</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-int" class="cv-panel hidden">
+    <div class="tl-item reveal">
+      <div><div class="tl-dot"></div></div>
+      <div>
+        <div class="tl-date">2024 – Present</div>
+        <div class="tl-role" data-i18n="cv.role.s42">Student · 42 Prague</div>
+        <div class="tl-org">Prague, Czech Republic</div>
+      </div>
+    </div>
+    <div class="tl-item reveal">
+      <div><div class="tl-dot"></div></div>
+      <div>
+        <div class="tl-date">03/2022 – 03/2023</div>
+        <div class="tl-role" data-i18n="cv.role.sem">Semester Abroad</div>
+        <div class="tl-org">Wenzao Ursuline University · Kaohsiung, Taiwan</div>
+      </div>
+    </div>
+    <div class="tl-item reveal">
+      <div><div class="tl-dot"></div></div>
+      <div>
+        <div class="tl-date">11/2018 – 04/2019</div>
+        <div class="tl-role" data-i18n="cv.role.wt">Work &amp; Travel</div>
+        <div class="tl-org">Taiwan</div>
+      </div>
+    </div>
+    <div class="tl-item reveal">
+      <div><div class="tl-dot"></div></div>
+      <div>
+        <div class="tl-date">08/2015 – 06/2016</div>
+        <div class="tl-role" data-i18n="cv.role.afs">Student Exchange · AFS Scholarship (Mercator Foundation)</div>
+        <div class="tl-org">Jinling High School · Nanjing, China</div>
+        <div class="tl-tags"><span class="tag">AFS</span><span class="tag">Mercator Foundation</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<div id="contact">
+  <div class="contact-inner reveal">
+    <div class="section-label" data-i18n="contact.label">Say Hello</div>
+    <h2 class="section-title" data-i18n="contact.title">Let's build something<br>together.</h2>
+    <p class="contact-sub" data-i18n="contact.sub">Whether it's a project, a collab, or just a good conversation.</p>
+    <form class="contact-form" onsubmit="handleSubmit(event)">
+      <div class="form-row">
+        <div class="form-field"><label data-i18n="contact.name">Name</label><input type="text" data-i18n-ph="contact.nameph" placeholder="Your name" required /></div>
+        <div class="form-field"><label data-i18n="contact.email">Email</label><input type="email" data-i18n-ph="contact.emailph" placeholder="your@email.com" required /></div>
+      </div>
+      <div class="form-field"><label data-i18n="contact.message">Message</label><textarea rows="5" data-i18n-ph="contact.msgph" placeholder="Tell me about your project..."></textarea></div>
+      <button type="submit" class="btn btn-primary" data-i18n="contact.send">Send Message ↗</button>
+    </form>
+    <div class="social-links">
+      <a href="https://www.linkedin.com/in/lillian-gottschalk/" target="_blank" class="social-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2zm2-3a2 2 0 110-4 2 2 0 010 4z"/></svg>
+        LinkedIn
+      </a>
+      <a href="/cdn-cgi/l/email-protection#f4989d98989d939b808087979c95989fb49d97989b8190da979b99" class="social-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Email
+      </a>
+    </div>
+  </div>
+</div>
+
+<footer><p><span data-i18n="footer.text">© 2025 Lillian Gottschalk — Built with care.</span></p></footer>
+
+<script>
+// CV Tabs
+function switchTab(id, btn) {
+  document.querySelectorAll('.cv-panel').forEach(p => { p.classList.remove('active'); p.classList.add('hidden'); });
+  document.querySelectorAll('.cv-tab').forEach(t => t.classList.remove('active'));
+  var panel = document.getElementById('tab-' + id);
+  panel.classList.remove('hidden'); panel.classList.add('active');
+  btn.classList.add('active');
+  panel.querySelectorAll('.reveal').forEach(function(el, i) {
+    setTimeout(function() { el.classList.add('visible'); }, i * 80);
+  });
+}
+
+// Cursor
+var cursor = document.getElementById('cursor');
+document.addEventListener('mousemove', function(e) {
+  cursor.style.left = e.clientX + 'px';
+  cursor.style.top = e.clientY + 'px';
+});
+document.querySelectorAll('a, button, .skill-chip, .stat, .project-card, input, textarea').forEach(function(el) {
+  el.addEventListener('mouseenter', function() { cursor.classList.add('grow'); });
+  el.addEventListener('mouseleave', function() { cursor.classList.remove('grow'); });
+});
+
+// Scroll reveal
+var revealObs = new IntersectionObserver(function(entries) {
+  entries.forEach(function(entry) {
+    if (entry.isIntersecting) { entry.target.classList.add('visible'); revealObs.unobserve(entry.target); }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(function(el) { revealObs.observe(el); });
+
+// Contact form
+function handleSubmit(e) {
+  e.preventDefault();
+  var btn = e.target.querySelector('button');
+  var orig = btn.innerHTML;
+  btn.textContent = '✓ Sent!'; btn.style.background = 'var(--accent2)';
+  setTimeout(function() { btn.innerHTML = orig; btn.style.background = ''; e.target.reset(); }, 3000);
+}
+</script>
+
+<script>
+// HERO NAME — Magnetic Shatter
+new p5(function(p) {
+  var wrap = document.getElementById('name-canvas-wrap');
+  var LINES = [
+    { text: 'LILLIAN',    size: 100, col: [232,160,200],  col2: [234,232,242] },
+    { text: 'GOTTSCHALK', size: 62,  col: [234,232,242], col2: [232,160,200]  },
+    { text: '莉莉安',      size: 72,  col: [80,60,160],   col2: [232,160,200]  }
+  ];
+  var shards = [], lastMove = 0, IDLE = 2500;
+
+  function Shard(ch, ox, oy, size, col, col2, isMain) {
+    this.ch=ch; this.ox=ox; this.oy=oy;
+    this.x=ox; this.y=oy; this.baseSize=size;
+    this.size=isMain?size:size*p.random(0.35,0.75);
+    this.isMain=isMain; this.angle=0; this.av=p.random(-0.04,0.04);
+    this.vx=0; this.vy=0; this.col=p.random()<0.65?col:col2;
+  }
+  Shard.prototype.update = function(mx, my, reformed) {
+    var dx=mx-this.x, dy=my-this.y, d=p.dist(mx,my,this.x,this.y);
+    if (!reformed && d<130 && d>0) {
+      this.vx+=dx/d*5.5; this.vy+=dy/d*5.5; this.av+=p.random(-0.08,0.08);
+    } else {
+      var k=reformed?0.12:0.055;
+      this.vx+=(this.ox-this.x)*k; this.vy+=(this.oy-this.y)*k;
+      this.av+=(0-this.angle)*(reformed?0.15:0.03); this.av*=reformed?0.7:0.88;
+    }
+    this.vx*=0.86; this.vy*=0.86; this.x+=this.vx; this.y+=this.vy; this.angle+=this.av;
+  };
+  Shard.prototype.draw = function(reformed) {
+    if (reformed && !this.isMain) return;
+    p.push(); p.translate(this.x,this.y); p.rotate(this.angle);
+    p.noStroke(); p.fill(this.col[0],this.col[1],this.col[2],210);
+    p.textSize(reformed&&this.isMain?this.baseSize:this.size);
+    p.textStyle(p.BOLD); p.textAlign(p.CENTER,p.CENTER); p.text(this.ch,0,0); p.pop();
+  };
+
+  function buildShards() {
+    shards=[];
+    var y=10;
+    LINES.forEach(function(line) {
+      p.textSize(line.size); p.textFont('Syne'); p.textStyle(p.BOLD);
+      var x=0;
+      Array.from(line.text).forEach(function(ch) {
+        var cw=p.textWidth(ch), cx=x+cw*0.5, cy=y+line.size*0.45;
+        shards.push(new Shard(ch,cx,cy,line.size,line.col,line.col2,true));
+        shards.push(new Shard(ch,cx+p.random(-5,5),cy+p.random(-6,6),line.size,line.col,line.col2,false));
+        shards.push(new Shard(ch,cx+p.random(-5,5),cy+p.random(-6,6),line.size,line.col,line.col2,false));
+        x+=cw;
+      });
+      y+=line.size*0.9;
+    });
+  }
+
+  p.setup = function() {
+    var w=wrap.offsetWidth||520;
+    p.createCanvas(w,280).parent(wrap);
+    p.textFont('Syne'); p.textStyle(p.BOLD);
+    buildShards();
+  };
+  p.draw = function() {
+    p.clear();
+    var reformed=(p.millis()-lastMove)>IDLE;
+    shards.forEach(function(s){s.update(p.mouseX,p.mouseY,reformed);s.draw(reformed);});
+  };
+  p.mouseMoved = function() { lastMove=p.millis(); };
+  p.windowResized = function() { p.resizeCanvas(wrap.offsetWidth,280); buildShards(); };
+});
+
+// PARTICLE WEB
+new p5(function(p) {
+  var wrap=document.getElementById('p5-canvas-wrap'), nodes=[];
+  function Node() {
+    this.x=p.random(p.width); this.y=p.random(p.height);
+    this.vx=p.random(-0.35,0.35); this.vy=p.random(-0.25,0.25);
+    this.r=p.random(2,4.5); this.alpha=p.random(140,220);
+    var t=p.random();
+    var c1=t<0.5?p.lerpColor(p.color(232,160,200),p.color(184,160,232),p.random()):p.lerpColor(p.color(100,130,200),p.color(232,160,200),p.random());
+    this.col=c1;
+  }
+  Node.prototype.update = function() {
+    var dx=p.mouseX-this.x, dy=p.mouseY-this.y, d=Math.sqrt(dx*dx+dy*dy);
+    if(d<160){this.vx+=dx*0.00015;this.vy+=dy*0.00015;}
+    this.vx*=0.995; this.vy*=0.995; this.x+=this.vx; this.y+=this.vy;
+    if(this.x<-10||this.x>p.width+10||this.y<-10||this.y>p.height+10){this.x=p.random(p.width);this.y=p.random(p.height);}
+  };
+  Node.prototype.draw = function() {
+    p.noStroke(); p.fill(p.red(this.col),p.green(this.col),p.blue(this.col),this.alpha); p.circle(this.x,this.y,this.r*2);
+  };
+  p.setup = function() { var cnv=p.createCanvas(wrap.offsetWidth,wrap.offsetHeight); cnv.parent(wrap); for(var i=0;i<55;i++) nodes.push(new Node()); };
+  p.windowResized = function() { p.resizeCanvas(wrap.offsetWidth,wrap.offsetHeight); };
+  p.draw = function() {
+    p.clear();
+    for(var i=0;i<nodes.length;i++) for(var j=i+1;j<nodes.length;j++) {
+      var dx=nodes[i].x-nodes[j].x, dy=nodes[i].y-nodes[j].y, d=Math.sqrt(dx*dx+dy*dy);
+      if(d<110){p.stroke(232,160,200,p.map(d,0,110,90,0));p.strokeWeight(0.6);p.line(nodes[i].x,nodes[i].y,nodes[j].x,nodes[j].y);}
+    }
+    nodes.forEach(function(n){n.update();n.draw();});
+  };
+});
+
+// SPLASH
+(function() {
+  var splash=document.getElementById('splash'), wrap=document.getElementById('splash-canvas-wrap'), entered=false;
+  function enter() {
+    if(entered) return; entered=true;
+    splash.style.pointerEvents='none'; splash.classList.add('exit');
+    document.body.classList.remove('splash-active');
+    setTimeout(function(){splash.style.display='none';},950);
+  }
+  splash.addEventListener('click',enter);
+  splash.addEventListener('touchstart',enter);
+  document.addEventListener('keydown',enter);
+
+  new p5(function(p) {
+    var LINES=[
+      {text:'LILLIAN',    size:0, col:[232,160,200],  col2:[234,232,242]},
+      {text:'GOTTSCHALK', size:0, col:[234,232,242], col2:[232,160,200]},
+      {text:'莉莉安',      size:0, col:[80,60,160],   col2:[232,160,200]}
+    ];
+    var shards=[], W, H, lastMove=0, IDLE=2500;
+
+    function Shard(ch,ox,oy,sz,col,col2,isMain) {
+      this.ch=ch; this.ox=ox; this.oy=oy;
+      this.x=ox+p.random(-300,300); this.y=oy+p.random(-200,200);
+      this.sz=isMain?sz:sz*p.random(0.3,0.8); this.baseSz=sz; this.isMain=isMain;
+      this.angle=p.random(p.TWO_PI); this.av=p.random(-0.06,0.06);
+      this.vx=p.random(-4,4); this.vy=p.random(-4,4);
+      this.col=p.random()<0.65?col:col2;
+    }
+    Shard.prototype.update=function(mx,my,reformed){
+      var dx=mx-this.x,dy=my-this.y,d=p.dist(mx,my,this.x,this.y);
+      if(!reformed&&d<180&&d>0){this.vx+=dx/d*6;this.vy+=dy/d*6;this.av+=p.random(-0.1,0.1);}
+      else{var k=reformed?0.1:0.05;this.vx+=(this.ox-this.x)*k;this.vy+=(this.oy-this.y)*k;this.av+=(0-this.angle)*(reformed?0.12:0.02);this.av*=reformed?0.72:0.88;}
+      this.vx*=0.87;this.vy*=0.87;this.x+=this.vx;this.y+=this.vy;this.angle+=this.av;
+    };
+    Shard.prototype.draw=function(reformed){
+      if(reformed&&!this.isMain)return;
+      p.push();p.translate(this.x,this.y);p.rotate(this.angle);p.noStroke();p.fill(this.col[0],this.col[1],this.col[2],220);
+      p.textSize(reformed&&this.isMain?this.baseSz:this.sz);p.textStyle(p.BOLD);p.textAlign(p.CENTER,p.CENTER);p.text(this.ch,0,0);p.pop();
+    };
+
+    function calcSizes(){
+      var target=W*0.82, s0=Math.min(W*0.18,160);
+      p.textFont('Syne');p.textSize(s0);p.textStyle(p.BOLD);
+      var w0=Array.from(LINES[0].text).reduce(function(a,c){return a+p.textWidth(c);},0);
+      LINES[0].size=s0*(target/w0); LINES[1].size=LINES[0].size*0.58; LINES[2].size=LINES[0].size*0.68;
+    }
+    function buildShards(){
+      shards=[];calcSizes();
+      var totalH=LINES.reduce(function(a,l){return a+l.size*0.9;},0);
+      var cy=H/2-totalH/2+LINES[0].size*0.45;
+      LINES.forEach(function(line){
+        p.textFont('Syne');p.textSize(line.size);p.textStyle(p.BOLD);
+        var chars=Array.from(line.text),totalW=chars.reduce(function(a,c){return a+p.textWidth(c);},0);
+        var cx=W/2-totalW/2;
+        chars.forEach(function(ch){
+          var cw=p.textWidth(ch),ox=cx+cw/2,oy=cy;
+          shards.push(new Shard(ch,ox,oy,line.size,line.col,line.col2,true));
+          shards.push(new Shard(ch,ox+p.random(-6,6),oy+p.random(-6,6),line.size,line.col,line.col2,false));
+          shards.push(new Shard(ch,ox+p.random(-6,6),oy+p.random(-6,6),line.size,line.col,line.col2,false));
+          cx+=cw;
+        });
+        cy+=line.size*0.9;
+      });
+    }
+    p.setup=function(){W=window.innerWidth;H=window.innerHeight;p.createCanvas(W,H).parent(wrap);p.textFont('Syne');buildShards();};
+    p.windowResized=function(){W=window.innerWidth;H=window.innerHeight;p.resizeCanvas(W,H);buildShards();};
+    p.mouseMoved=function(){lastMove=p.millis();};
+    p.draw=function(){
+      p.background(13,21,53);
+      if(entered)return;
+      var reformed=(p.millis()-lastMove)>IDLE;
+      shards.forEach(function(s){s.update(p.mouseX,p.mouseY,reformed);s.draw(reformed);});
+    };
+  }, wrap);
+})();
+</script>
+
+<script>
+var TRANSLATIONS = {
+  en: {
+    'nav.about': 'About', 'nav.projects': 'Projects', 'nav.cv': 'CV', 'nav.cta': 'Say Hello ✦',
+    'hero.tag': 'GTM & Automation Manager',
+    'hero.sub': 'Connecting humans, cultures and machines — bridging go-to-market strategy with hands-on process automation.',
+    'hero.cta1': 'View Projects →', 'hero.cta2': 'Get in Touch',
+    'hero.based': 'Based in', 'hero.pill1': '🤖 Automation', 'hero.pill2': '🌏 3 Languages', 'hero.pill3': '⚡ GTM',
+    'about.label': 'About Me', 'about.title': 'Humans.<br>Cultures.<br>Machines.',
+    'about.p1': "I'm <strong>Lillian Gottschalk</strong>, GTM & Automation Manager at <strong>VAARHAFT GmbH</strong> — bridging strategic go-to-market thinking with hands-on process automation.",
+    'about.p2': 'Whether building intelligent workflows with <strong>n8n</strong>, engineering outreach pipelines with <strong>Lemlist</strong>, or scripting in <strong>Python</strong> — I thrive at the intersection of people, technology and cross-cultural communication.',
+    'about.p3': 'Currently deepening my software foundations at <strong>42 Prague</strong> while working full-time in Berlin.',
+    'about.stat1': 'B.A. Grade (Asian Studies)', 'about.stat2': 'Languages spoken', 'about.stat3': 'Prague — coding school',
+    'skills.cat1': 'Automation & Code', 'skills.cat2': 'GTM & Growth', 'skills.cat3': 'Languages',
+    'skills.native': 'Native', 'skills.fluent1': 'Fluent',
+    'projects.label': 'Work', 'projects.title': 'Selected Projects',
+    'projects.p1title': 'Project One', 'projects.p1desc': 'Coming soon — placeholder for your first featured project.',
+    'projects.p2title': 'Project Two', 'projects.p2desc': 'Coming soon — placeholder for your second featured project.',
+    'projects.p3title': 'Project Three', 'projects.p3desc': 'Coming soon — placeholder for your third featured project.',
+    'cv.label': 'Resume', 'cv.title': 'Experience & Background',
+    'cv.tab1': 'Experience', 'cv.tab2': 'Education', 'cv.tab3': 'International',
+    'cv.present': 'Present',
+    'contact.label': 'Say Hello', 'contact.title': "Let's build something<br>together.",
+    'contact.sub': "Whether it's a project, a collab, or just a good conversation.",
+    'contact.name': 'Name', 'contact.email': 'Email', 'contact.message': 'Message',
+    'contact.nameph': 'Your name', 'contact.emailph': 'your@email.com', 'contact.msgph': 'Tell me about your project...',
+    'contact.send': 'Send Message ↗',
+    'splash.hint': 'Click anywhere to enter',
+    'ticker.gtm': 'GTM Strategy ✦',
+    'ticker.wf': 'Workflow Automation ✦',
+    'ticker.lead': 'Lead Generation ✦',
+    'ticker.langs': 'Mandarin · English · German ✦',
+    'lang.de': 'German',
+    'lang.en': 'English',
+    'lang.zh': 'Mandarin',
+    'skills.fluent': 'Fluent',
+    'cv.role.gtm': 'GTM & Automation Manager',
+    'cv.role.fa': 'Founders Associate',
+    'cv.role.intern': 'Internship · Import / Logistics / Disposition',
+    'cv.role.sa': 'Student Assistant',
+    'cv.role.42': 'Foundations of Software Development',
+    'cv.role.ba': 'B.A. Asian Studies & Management China — Grade 1.2',
+    'cv.role.hs': 'High School Diploma (Abitur)',
+    'cv.role.s42': 'Student · 42 Prague',
+    'cv.role.sem': 'Semester Abroad',
+    'cv.role.wt': 'Work & Travel',
+    'cv.role.afs': 'Student Exchange · AFS Scholarship (Mercator Foundation)',
+    'cv.org.china': 'China Competence Center · HTWG Konstanz',
+    'cv.org.dante': 'Dante Gymnasium · Munich',
+    'cv.desc.thesis': 'Thesis: Disinformation & digital democracy in Taiwan',
+    'footer.text': '© 2025 Lillian Gottschalk — Built with care.'
+  },
+  de: {
+    'nav.about': 'Über mich', 'nav.projects': 'Projekte', 'nav.cv': 'Lebenslauf', 'nav.cta': 'Kontakt ✦',
+    'hero.tag': 'GTM & Automation Managerin',
+    'hero.sub': 'Menschen, Kulturen und Maschinen verbinden — Go-to-Market-Strategie trifft auf Prozessautomatisierung.',
+    'hero.cta1': 'Projekte ansehen →', 'hero.cta2': 'Kontakt aufnehmen',
+    'hero.based': 'Wohnhaft in', 'hero.pill1': '🤖 Automatisierung', 'hero.pill2': '🌏 3 Sprachen', 'hero.pill3': '⚡ GTM',
+    'about.label': 'Über mich', 'about.title': 'Menschen.<br>Kulturen.<br>Maschinen.',
+    'about.p1': 'Ich bin <strong>Lillian Gottschalk</strong>, GTM & Automation Managerin bei <strong>VAARHAFT GmbH</strong> — ich verbinde strategisches Go-to-Market-Denken mit praxisnaher Prozessautomatisierung.',
+    'about.p2': 'Ob intelligente Workflows mit <strong>n8n</strong>, Outreach-Pipelines mit <strong>Lemlist</strong> oder Skripte in <strong>Python</strong> — ich arbeite an der Schnittstelle von Menschen, Technologie und interkultureller Kommunikation.',
+    'about.p3': 'Derzeit vertiefe ich meine Softwarekenntnisse bei <strong>42 Prague</strong> und arbeite gleichzeitig Vollzeit in Berlin.',
+    'about.stat1': 'B.A. Note (Asienstudien)', 'about.stat2': 'Gesprochene Sprachen', 'about.stat3': 'Prague — Coding-Schule',
+    'skills.cat1': 'Automatisierung & Code', 'skills.cat2': 'GTM & Wachstum', 'skills.cat3': 'Sprachen',
+    'skills.native': 'Muttersprache', 'skills.fluent1': 'Fließend',
+    'projects.label': 'Projekte', 'projects.title': 'Ausgewählte Projekte',
+    'projects.p1title': 'Projekt Eins', 'projects.p1desc': 'Demnächst — Platzhalter für dein erstes Projekt.',
+    'projects.p2title': 'Projekt Zwei', 'projects.p2desc': 'Demnächst — Platzhalter für dein zweites Projekt.',
+    'projects.p3title': 'Projekt Drei', 'projects.p3desc': 'Demnächst — Platzhalter für dein drittes Projekt.',
+    'cv.label': 'Lebenslauf', 'cv.title': 'Erfahrung & Werdegang',
+    'cv.tab1': 'Erfahrung', 'cv.tab2': 'Ausbildung', 'cv.tab3': 'International',
+    'cv.present': 'Heute',
+    'contact.label': 'Hallo sagen', 'contact.title': 'Lass uns zusammen<br>etwas bauen.',
+    'contact.sub': 'Ob Projekt, Zusammenarbeit oder einfach ein gutes Gespräch.',
+    'contact.name': 'Name', 'contact.email': 'E-Mail', 'contact.message': 'Nachricht',
+    'contact.nameph': 'Dein Name', 'contact.emailph': 'deine@email.de', 'contact.msgph': 'Erzähl mir von deinem Projekt...',
+    'contact.send': 'Nachricht senden ↗',
+    'splash.hint': 'Klicke irgendwo um fortzufahren',
+    'ticker.gtm': 'GTM-Strategie ✦',
+    'ticker.wf': 'Workflow-Automatisierung ✦',
+    'ticker.lead': 'Lead-Generierung ✦',
+    'ticker.langs': 'Mandarin · Englisch · Deutsch ✦',
+    'lang.de': 'Deutsch',
+    'lang.en': 'Englisch',
+    'lang.zh': 'Mandarin',
+    'skills.fluent': 'Fließend',
+    'cv.role.gtm': 'GTM & Automation Managerin',
+    'cv.role.fa': 'Founders Associate',
+    'cv.role.intern': 'Praktikum · Import / Logistik / Disposition',
+    'cv.role.sa': 'Studentische Hilfskraft',
+    'cv.role.42': 'Grundlagen der Softwareentwicklung',
+    'cv.role.ba': 'B.A. Asienstudien & Management China — Note 1,2',
+    'cv.role.hs': 'Abitur',
+    'cv.role.s42': 'Studierende · 42 Prague',
+    'cv.role.sem': 'Auslandssemester',
+    'cv.role.wt': 'Work & Travel',
+    'cv.role.afs': 'Schüleraustausch · AFS-Stipendium (Mercator-Stiftung)',
+    'cv.org.china': 'China-Kompetenzzentrum · HTWG Konstanz',
+    'cv.org.dante': 'Dante-Gymnasium · München',
+    'cv.desc.thesis': 'Abschlussarbeit: Desinformation & digitale Demokratie in Taiwan',
+    'footer.text': '© 2025 Lillian Gottschalk — Mit Herzblut gebaut.'
+  },
+  zh: {
+    'nav.about': '关于我', 'nav.projects': '项目', 'nav.cv': '简历', 'nav.cta': '联系我 ✦',
+    'hero.tag': 'GTM & 自动化经理',
+    'hero.sub': '连接人类、文化与机器 — 将市场进入策略与流程自动化融为一体。',
+    'hero.cta1': '查看项目 →', 'hero.cta2': '与我联系',
+    'hero.based': '现居', 'hero.pill1': '🤖 自动化', 'hero.pill2': '🌏 三门语言', 'hero.pill3': '⚡ GTM',
+    'about.label': '关于我', 'about.title': '人与人。<br>文化。<br>机器。',
+    'about.p1': '我是<strong>李莉安·戈特沙尔克</strong>，VAARHAFT GmbH 的 GTM 与自动化经理 — 将市场进入战略思维与实际流程自动化相结合。',
+    'about.p2': '无论是用 <strong>n8n</strong> 构建智能工作流、用 <strong>Lemlist</strong> 打造外展管道，还是用 <strong>Python</strong> 编写脚本 — 我在人、技术与跨文化沟通的交汇点茁壮成长。',
+    'about.p3': '目前在 <strong>42 Prague</strong> 深化软件开发基础，同时在柏林全职工作。',
+    'about.stat1': '学士成绩（亚洲研究）', 'about.stat2': '掌握语言数', 'about.stat3': '布拉格 — 编程学校',
+    'skills.cat1': '自动化与编程', 'skills.cat2': 'GTM 与增长', 'skills.cat3': '语言',
+    'skills.native': '母语', 'skills.fluent1': '流利',
+    'projects.label': '项目', 'projects.title': '精选项目',
+    'projects.p1title': '项目一', 'projects.p1desc': '即将推出 — 第一个精选项目的占位符。',
+    'projects.p2title': '项目二', 'projects.p2desc': '即将推出 — 第二个精选项目的占位符。',
+    'projects.p3title': '项目三', 'projects.p3desc': '即将推出 — 第三个精选项目的占位符。',
+    'cv.label': '简历', 'cv.title': '经历与背景',
+    'cv.tab1': '工作经历', 'cv.tab2': '教育经历', 'cv.tab3': '国际经历',
+    'cv.present': '至今',
+    'contact.label': '打个招呼', 'contact.title': '让我们一起<br>创造些什么。',
+    'contact.sub': '无论是项目合作、协作，还是一次愉快的交流。',
+    'contact.name': '姓名', 'contact.email': '邮箱', 'contact.message': '留言',
+    'contact.nameph': '你的姓名', 'contact.emailph': 'your@email.com', 'contact.msgph': '告诉我你的项目...',
+    'contact.send': '发送消息 ↗',
+    'splash.hint': '点击任意位置进入',
+    'ticker.gtm': 'GTM 策略 ✦',
+    'ticker.wf': '工作流自动化 ✦',
+    'ticker.lead': '线索生成 ✦',
+    'ticker.langs': '普通话 · 英语 · 德语 ✦',
+    'lang.de': '德语',
+    'lang.en': '英语',
+    'lang.zh': '普通话',
+    'skills.fluent': '流利',
+    'cv.role.gtm': 'GTM 与自动化经理',
+    'cv.role.fa': '创始团队成员',
+    'cv.role.intern': '实习 · 进口 / 物流 / 调度',
+    'cv.role.sa': '学生助理',
+    'cv.role.42': '软件开发基础',
+    'cv.role.ba': '文学学士：亚洲研究与中国管理 — 成绩 1.2',
+    'cv.role.hs': '高中毕业文凭（Abitur）',
+    'cv.role.s42': '学生 · 42 Prague',
+    'cv.role.sem': '海外学期',
+    'cv.role.wt': '工作与旅行',
+    'cv.role.afs': '学生交流 · AFS 奖学金（墨卡托基金会）',
+    'cv.org.china': '中国能力中心 · HTWG 康斯坦茨',
+    'cv.org.dante': '但丁文理高中 · 慕尼黑',
+    'cv.desc.thesis': '毕业论文：台湾的虚假信息与数字民主',
+    'footer.text': '© 2025 Lillian Gottschalk — 用心打造。'
+  }
+};
+
+var currentLang = 'en';
+
+function setLang(lang) {
+  currentLang = lang;
+  var t = TRANSLATIONS[lang];
+
+  // Update active button
+  document.querySelectorAll('.lang-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.getAttribute('onclick').includes("'" + lang + "'"));
+  });
+
+  // Update html lang attribute
+  document.documentElement.lang = lang === 'zh' ? 'zh' : lang;
+
+  // Translate all tagged elements
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n');
+    if (t[key] !== undefined) {
+      el.innerHTML = t[key];
+    }
+  });
+
+  // Translate placeholders
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n-ph');
+    if (t[key] !== undefined) {
+      el.placeholder = t[key];
+    }
+  });
+
+  // Handle "Present" date entries
+  document.querySelectorAll('[data-i18n-append]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n');
+    var prefix = el.getAttribute('data-i18n-append');
+    if (t[key] !== undefined) {
+      el.textContent = prefix + t[key];
+    }
+  });
+}
+</script>
+
+</body>
+</html>
